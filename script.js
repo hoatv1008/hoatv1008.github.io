@@ -47,6 +47,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Tạo danh sách các lựa chọn đáp án
         const options = generateOptions(correctAnswer);
         displayOptions(options);
+
+        // Đặt focus vào nút "Quay lại" sau khi tạo câu hỏi
+        document.getElementById('back-btn-table').focus();
     }
 
     // Hàm tạo các lựa chọn đáp án (đáp án đúng + các đáp án sai ngẫu nhiên)
