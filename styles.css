@@ -1,0 +1,105 @@
+body {
+    background-color: #f0f8ff;
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+}
+
+h1, h3 {
+    color: #ff4500;
+    text-shadow: 2px 2px #ffd700;
+}
+
+#monkey {
+    max-width: 200px;
+    animation: wiggle 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-05px);
+    }
+}
+@keyframes wiggle {
+    0% { transform: rotate(0deg); }
+    25% { transform: rotate(-10deg); }
+    50% { transform: rotate(10deg); }
+    75% { transform: rotate(-10deg); }
+    100% { transform: rotate(0deg); }
+}
+
+.btn {
+    font-size: 1.2rem;
+    padding: 10px 20px;
+}
+
+#game-area, #table-area {
+    background-color: #fffacd;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+#feedback {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+/* CSS cho các nút đáp án */
+.option-btn {
+    font-size: 1.2rem;
+    padding: 10px 20px;
+    margin: 5px;
+    border-radius: 10px;
+    background-color: #87ceeb;
+    border: 2px solid #4682b4;
+    color: #ffffff;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.option-btn:hover {
+    background-color: #4682b4;
+}
+
+.option-btn.correct {
+    background-color: #32cd32;
+    border-color: #228b22;
+}
+
+.option-btn.wrong {
+    background-color: #ff6347;
+    border-color: #dc143c;
+}
+
+/* CSS cho nút Quay lại (mũi tên) */
+.back-btn {
+    background-color: #ff6347;
+    border: 2px solid #dc143c;
+    border-radius: 50%; /* Làm nút tròn */
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    position: absolute; /* Đưa nút sang bên phải */
+    right: 20px; /* Khoảng cách từ mép phải */
+    margin-top: 30px; /* Khoảng cách từ phần phía trên */
+}
+
+.back-btn i {
+    color: #ffffff;
+    font-size: 1.5rem;
+}
+
+.back-btn:hover {
+    background-color: #dc143c;
+    transform: scale(1.1) rotate(-10deg); /* Phóng to và xoay nhẹ khi hover */
+}
