@@ -1,70 +1,111 @@
 document.addEventListener('DOMContentLoaded', () => {
     let score = 0;
+    let streak = 0; // kept for score calculation (not displayed)
+    let currentMilestoneIndex = 0;
+    let correctCount = 0;   // count of correct answers
+    let wrongCount = 0;     // count of wrong answers
+    let helpPressCount = 0; // count of help icon presses
+    let isChallengeMode = false; // flag for mode
+    const milestones = [100, 500, 1000, 2000];
+    const maxScore = milestones[milestones.length - 1];
     let correctAnswer;
     let timer;
     let timeLeft = 60;
+    let currentNum1;
+    let currentNum2;
+    let currentOperation;
+    let helpTimeout;
+    let answerSelected = false;
 
-    // Khởi tạo âm thanh vui nhộn bằng Howler.js
-    const clickSound = new Howl({
-        src: ['boing.mp3'], // Âm thanh khi nhấn nút Quay lại
-        volume: 0.5 // Âm lượng (từ 0.0 đến 1.0)
-    });
-
+    const clickSound = new Howl({ src: ['boing.mp3'], volume: 0.5 });
     const correctSounds = [
-        new Howl({ src: ['correct-1.mp3'], volume: 0.5 }),
-        new Howl({ src: ['correct-2.mp3'], volume: 0.5 }),
-        new Howl({ src: ['correct-3.mp3'], volume: 0.5 })
+        new Howl({ src: 'correct-1.mp3', volume: 0.5 }),
+        new Howl({ src: 'correct-2.mp3', volume: 0.5 }),
+        new Howl({ src: 'correct-3.mp3', volume: 0.5 })
     ];
-    
     const wrongSounds = [
-        new Howl({ src: ['wrong-1.mp3'], volume: 0.5 }),
-        new Howl({ src: ['wrong-2.mp3'], volume: 0.5 })
+        new Howl({ src: 'wrong-1.mp3', volume: 0.5 }),
+        new Howl({ src: 'wrong-2.mp3', volume: 0.5 })
     ];
 
-    // Hàm tạo câu hỏi ngẫu nhiên và các lựa chọn đáp án
-    function generateQuestion(mode) {
+    function playCorrectSound() {
+        correctSounds[Math.floor(Math.random() * correctSounds.length)].play();
+    }
+    
+    function playWrongSound() {
+        wrongSounds[Math.floor(Math.random() * wrongSounds.length)].play();
+    }
+    
+    function updateScoreDisplay() {
+        document.getElementById('score').innerText = score;
+        document.getElementById('correct').innerText = correctCount;
+        document.getElementById('wrong').innerText = wrongCount;
+        document.getElementById('helpCount').innerText = helpPressCount;
+
+        const scoreElement = document.getElementById('score');
+        scoreElement.classList.add('score-pop');
+        setTimeout(() => scoreElement.classList.remove('score-pop'), 300);
+
+        const progress = (score / maxScore) * 100;
+        document.getElementById('score-progress').style.width = `${progress}%`;
+    }
+
+    function generateQuestion() {
         const operations = ['+', '-', 'x', ':'];
         let operation = operations[Math.floor(Math.random() * operations.length)];
         let num1, num2;
 
         if (operation === 'x' || operation === ':') {
-            num1 = Math.floor(Math.random() * 10) + 1; // Số từ 1-10
-            num2 = Math.floor(Math.random() * 10) + 1; // Số từ 1-10
+            num1 = Math.floor(Math.random() * 10) + 1;
+            num2 = Math.floor(Math.random() * 10) + 1;
         } else {
-            num1 = Math.floor(Math.random() * 50) + 1; // Số từ 1-50
-            num2 = Math.floor(Math.random() * 50) + 1; // Số từ 1-50
+            num1 = Math.floor(Math.random() * 50) + 1;
+            num2 = Math.floor(Math.random() * 50) + 1;
         }
 
         if (operation === ':') {
-            num1 = num1 * num2; // Đảm bảo phép chia có kết quả nguyên
+            num1 = num1 * num2;
         } else if (operation === '-') {
-            if (num1 < num2) [num1, num2] = [num2, num1]; // Đảm bảo số bị trừ lớn hơn số trừ
+            if (num1 < num2) [num1, num2] = [num2, num1];
         }
 
         correctAnswer = eval(`${num1} ${operation.replace('x', '*').replace(':', '/')} ${num2}`);
         document.getElementById('question').innerHTML = `Câu hỏi: ${num1} ${operation} ${num2} = ?`;
 
-        // Tạo danh sách các lựa chọn đáp án
+        currentNum1 = num1;
+        currentNum2 = num2;
+        currentOperation = operation;
+
+        const helpBtn = document.getElementById('help-btn');
+        helpBtn.style.display = 'none';
+
+        answerSelected = false;
+
+        clearTimeout(helpTimeout);
+        // Only allow help button to show if NOT in challenge mode
+        helpTimeout = setTimeout(() => {
+            if (!answerSelected && !isChallengeMode) {
+                helpBtn.style.display = 'block';
+            } else {
+                helpBtn.style.display = 'none';
+            }
+        }, 5000);
+
         const options = generateOptions(correctAnswer);
         displayOptions(options);
-
-        // Đặt focus vào nút "Quay lại" sau khi tạo câu hỏi
-        document.getElementById('back-btn-table').focus();
     }
 
-    // Hàm tạo các lựa chọn đáp án (đáp án đúng + các đáp án sai ngẫu nhiên)
     function generateOptions(correctAnswer) {
         const options = [correctAnswer];
-        const range = 10; // Phạm vi tạo các đáp án sai xung quanh đáp án đúng
+        const range = 10;
 
-        while (options.length < 4) { // Tạo 4 lựa chọn (1 đúng, 3 sai)
+        while (options.length < 4) {
             const wrongAnswer = correctAnswer + (Math.floor(Math.random() * range * 2) - range);
             if (!options.includes(wrongAnswer) && wrongAnswer !== correctAnswer && wrongAnswer >= 0) {
                 options.push(wrongAnswer);
             }
         }
 
-        // Xáo trộn các lựa chọn để đáp án đúng không luôn ở vị trí đầu tiên
         for (let i = options.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [options[i], options[j]] = [options[j], options[i]];
@@ -73,66 +114,143 @@ document.addEventListener('DOMContentLoaded', () => {
         return options;
     }
 
-    // Hàm hiển thị các lựa chọn đáp án dưới dạng nút
     function displayOptions(options) {
         const optionsDiv = document.getElementById('options');
-        optionsDiv.innerHTML = ''; // Xóa các lựa chọn cũ
+        optionsDiv.innerHTML = '';
         options.forEach(option => {
             const button = document.createElement('button');
             button.className = 'option-btn';
             button.innerText = option;
-            button.addEventListener('click', () => checkAnswer(option, options));
+            button.addEventListener('click', () => {
+                answerSelected = true;
+                clearTimeout(helpTimeout);
+                checkAnswer(option);
+            });
             optionsDiv.appendChild(button);
         });
     }
 
-    // Hàm kiểm tra đáp án khi trẻ chọn
-    function checkAnswer(selectedAnswer, options) {
+    function showHelpTable() {
+        // Increment help press count each time help is used
+        helpPressCount++;
+        updateScoreDisplay();
+
+        let helpContent = '';
+
+        if (currentOperation === 'x' || currentOperation === ':') {
+            const tableNum = Math.min(currentNum1, currentNum2);
+            helpContent = `<h3>Bảng nhân ${tableNum}</h3>`;
+            for (let i = 1; i <= 10; i++) {
+                helpContent += `${tableNum} x ${i} = ${tableNum * i}<br>`;
+            }
+        } else if (currentOperation === '+') {
+            const tens2 = Math.floor(currentNum2 / 10) * 10;
+            const ones2 = currentNum2 % 10;
+
+            helpContent = `<h3>Cách cộng theo hàng chục và đơn vị</h3>`;
+            helpContent += `Chia số hạng phía sau thành hàng chục và đơn vị, rồi cộng từng phần với số hạng phía trước.<br>`;
+            helpContent += `<p class="help-text">`;
+            helpContent += `<strong>Ví dụ: ${currentNum1} + ${currentNum2}</strong><br><br>`;
+            helpContent += `Làm từng bước:<br>`;
+            helpContent += `1. Chia ${currentNum2} thành:<br>`;
+            helpContent += `- Hàng chục: ${tens2}<br>`;
+            helpContent += `- Hàng đơn vị: ${ones2}<br>`;
+            helpContent += `2. Cộng hàng chục trước: ${currentNum1} + ${tens2} = ${currentNum1 + tens2}<br>`;
+            helpContent += `3. Cộng thêm hàng đơn vị: ${currentNum1 + tens2} + ${ones2} = ${currentNum1 + tens2 + ones2}<br>`;
+            helpContent += `<strong>Kết quả: ${currentNum1} + ${currentNum2} = ${correctAnswer}</strong>`;
+            helpContent += `</p>`;
+        } else if (currentOperation === '-') {
+            const tens2 = Math.floor(currentNum2 / 10) * 10;
+            const ones2 = currentNum2 % 10;
+
+            helpContent = `<h3>Cách trừ theo hàng chục và đơn vị</h3>`;
+            helpContent += `Chia số trừ thành hàng chục và đơn vị, rồi trừ từng phần.<br>`;
+            helpContent += `<p class="help-text">`;
+            helpContent += `<strong>Ví dụ: ${currentNum1} - ${currentNum2}</strong><br><br>`;
+            helpContent += `Làm từng bước:<br>`;
+            helpContent += `1. Chia ${currentNum2} thành:<br>`;
+            helpContent += `- Hàng chục: ${tens2}<br>`;
+            helpContent += `- Hàng đơn vị: ${ones2}<br>`;
+            helpContent += `2. Trừ hàng chục trước: ${currentNum1} - ${tens2} = ${currentNum1 - tens2}<br>`;
+            helpContent += `3. Trừ thêm hàng đơn vị: ${currentNum1 - tens2} - ${ones2} = ${currentNum1 - tens2 - ones2}<br>`;
+            helpContent += `<strong>Kết quả: ${currentNum1} - ${currentNum2} = ${correctAnswer}</strong>`;
+            helpContent += `</p>`;
+        }
+
+        Swal.fire({
+            html: helpContent,
+            icon: 'info',
+            confirmButtonText: 'Đóng'
+        });
+    }
+
+    document.getElementById('help-btn').addEventListener('click', showHelpTable);
+
+    function checkAnswer(selectedAnswer) {
         if (selectedAnswer === correctAnswer) {
-            // Phát âm thanh khi trả lời Đúng
-            correctSounds[Math.floor(Math.random() * correctSounds.length)].play();
-            
-            score += 10;
-            document.getElementById('score').innerText = score;
+            correctCount++; // increment correct answer count
+            streak++;
+            score += 10 * streak;
+            updateScoreDisplay();
+
+            if (score >= maxScore) {
+                const totalTimeUsed = 600 - timeLeft;
+                const minutesUsed = Math.floor(totalTimeUsed / 60);
+                const secondsUsed = totalTimeUsed % 60;
+                Swal.fire({
+                    title: '🏆 Bạn đã chiến thắng 🏆',
+                    html: `<p>Bạn đã đạt <strong>${score}</strong> điểm!<br>
+                           Số câu đúng: <strong>${correctCount}</strong><br>
+                           Số câu sai: <strong>${wrongCount}</strong><br>
+                           Số lần trợ giúp: <strong>${helpPressCount}</strong><br>
+                           Tổng thời gian: <strong>${minutesUsed} phút ${secondsUsed} giây</strong></p>`,
+                    icon: 'success',
+                    confirmButtonText: 'Đồng ý',
+                    allowOutsideClick: false
+                }).then(() => {
+                    returnToMainMenu();
+                });
+                return;
+            }
+
+            while (currentMilestoneIndex < milestones.length && score >= milestones[currentMilestoneIndex]) {
+                Swal.fire({
+                    title: 'Chúc mừng!',
+                    text: `Bạn đã vượt qua ${milestones[currentMilestoneIndex]} điểm!`,
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                currentMilestoneIndex++;
+            }
+
             document.getElementById('feedback').innerHTML = 'Chính xác! Bạn thật giỏi! 😊';
             document.getElementById('feedback').style.color = 'green';
-            Swal.fire({
-                title: 'Tuyệt vời!',
-                text: 'Bạn đã trả lời đúng!',
-                icon: 'success',
-                timer: 1500,
-                showConfirmButton: false
-            });
+            playCorrectSound();
 
-            // Tô màu xanh cho đáp án đúng
             const buttons = document.getElementsByClassName('option-btn');
             for (let button of buttons) {
                 if (parseInt(button.innerText) === correctAnswer) {
                     button.classList.add('correct');
                 }
-                button.disabled = true; // Vô hiệu hóa các nút sau khi chọn
+                button.disabled = true;
             }
 
-            // Tự động chuyển sang câu hỏi mới sau 1.5 giây
             setTimeout(() => {
                 generateQuestion();
                 document.getElementById('feedback').innerHTML = '';
             }, 1500);
         } else {
-            // Phát âm thanh khi trả lời Sai
-            wrongSounds[Math.floor(Math.random() * wrongSounds.length)].play();
+            wrongCount++; // increment wrong answer count
+            const lastMilestone = currentMilestoneIndex > 0 ? milestones[currentMilestoneIndex - 1] : 0;
+            score = Math.max(lastMilestone, score - 5);
+            streak = 0;
+            updateScoreDisplay();
 
-            document.getElementById('feedback').innerHTML = `Sai rồi! Đáp án đúng là ${correctAnswer}. Cố lên nhé! 😢`;
+            document.getElementById('feedback').innerHTML = `Sai rồi! Đáp án đúng là ${correctAnswer}. Cẩn thận hơn nhé! 😢`;
             document.getElementById('feedback').style.color = 'red';
-            Swal.fire({
-                title: 'Ôi không!',
-                text: `Đáp án đúng là ${correctAnswer}. Cố gắng lần sau nhé!`,
-                icon: 'error',
-                timer: 5000,
-                showConfirmButton: false
-            });
+            playWrongSound();
 
-            // Tô màu đỏ cho đáp án sai và màu xanh cho đáp án đúng
             const buttons = document.getElementsByClassName('option-btn');
             for (let button of buttons) {
                 if (parseInt(button.innerText) === selectedAnswer) {
@@ -141,45 +259,62 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (parseInt(button.innerText) === correctAnswer) {
                     button.classList.add('correct');
                 }
-                button.disabled = true; // Vô hiệu hóa các nút sau khi chọn
+                button.disabled = true;
             }
 
-            // Tự động chuyển sang câu hỏi mới sau 1.5 giây
             setTimeout(() => {
                 generateQuestion();
                 document.getElementById('feedback').innerHTML = '';
-            }, 5000);
+            }, 1500);
         }
     }
 
-    // Hàm bắt đầu chế độ luyện tập
     function startPracticeMode() {
-        clickSound.play();
-
+        isChallengeMode = false;
         document.getElementById('mode-selection').style.display = 'none';
         document.getElementById('game-area').style.display = 'block';
         document.getElementById('timer').style.display = 'none';
+        // Reset all counters
         score = 0;
-        document.getElementById('score').innerText = score;
+        streak = 0;
+        currentMilestoneIndex = 0;
+        correctCount = 0;
+        wrongCount = 0;
+        helpPressCount = 0;
+        updateScoreDisplay();
         generateQuestion();
     }
 
-    // Hàm bắt đầu chế độ thi đấu
     function startChallengeMode() {
-        clickSound.play();
-
+        isChallengeMode = true;
         document.getElementById('mode-selection').style.display = 'none';
         document.getElementById('game-area').style.display = 'block';
         document.getElementById('timer').style.display = 'block';
+        // Ensure help button is disabled in challenge mode
+        document.getElementById('help-btn').style.display = 'none';
+        // Reset all counters
         score = 0;
-        timeLeft = 60;
-        document.getElementById('score').innerText = score;
-        document.getElementById('time-left').innerText = timeLeft;
+        streak = 0;
+        currentMilestoneIndex = 0;
+        correctCount = 0;
+        wrongCount = 0;
+        helpPressCount = 0;
+        timeLeft = 600; // 10 minutes in seconds
+        updateScoreDisplay();
+    
+        // Helper function to update the time display in mm:ss format
+        const displayTime = () => {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            document.getElementById('time-left').innerText = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        };
+
+        displayTime();
         generateQuestion();
 
         timer = setInterval(() => {
             timeLeft--;
-            document.getElementById('time-left').innerText = timeLeft;
+            displayTime();
             if (timeLeft <= 0) {
                 clearInterval(timer);
                 Swal.fire({
@@ -194,10 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1000);
     }
 
-    // Hàm bắt đầu chế độ học bảng cửu chương
     function startTableMode() {
-        clickSound.play();
-
         document.getElementById('mode-selection').style.display = 'none';
         document.getElementById('table-area').style.display = 'block';
         document.getElementById('table-number').addEventListener('change', (e) => {
@@ -210,33 +342,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('table-content').innerHTML = content;
             }
         });
+        document.getElementById('back-btn-table').focus();
     }
 
-    // Hàm quay lại màn hình chính
     function returnToMainMenu() {
-        // Phát âm thanh vui nhộn
         clickSound.play();
-
-        // Hiển thị lại màn hình chính
         document.getElementById('mode-selection').style.display = 'block';
-
-        // Ẩn khu vực trò chơi và bảng cửu chương
         document.getElementById('game-area').style.display = 'none';
         document.getElementById('table-area').style.display = 'none';
-
-        // Nếu đang ở chế độ Thi Đấu, dừng bộ đếm thời gian
         if (timer) {
             clearInterval(timer);
             timer = null;
         }
-
-        // Đặt lại điểm và thông báo
         score = 0;
-        document.getElementById('score').innerText = score;
+        streak = 0;
+        currentMilestoneIndex = 0;
+        updateScoreDisplay();
         document.getElementById('feedback').innerHTML = '';
     }
 
-    // Đảm bảo các hàm toàn cục có thể được gọi từ HTML
     window.startPracticeMode = startPracticeMode;
     window.startChallengeMode = startChallengeMode;
     window.startTableMode = startTableMode;
